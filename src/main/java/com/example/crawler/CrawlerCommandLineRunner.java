@@ -1,6 +1,8 @@
 package com.example.crawler;
 
+import com.example.crawler.coloso.ColosoCrawler;
 import com.example.crawler.fastcampus.FastCampusCrawler;
+import com.example.crawler.inflearn.InflearnCrawler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
@@ -11,10 +13,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class CrawlerCommandLineRunner implements CommandLineRunner {
 
-    private final FastCampusCrawler crawler;
+    private final FastCampusCrawler fastCampusCrawler;
+    private final InflearnCrawler inflearnCrawler;
+    private final ColosoCrawler colosoCrawler;
 
     @Override
     public void run(String... args) throws Exception {
-        crawler.activate();
+//        inflearnCrawler.activate();
+//        colosoCrawler.activate();
+        fastCampusCrawler.activate();
     }
 }

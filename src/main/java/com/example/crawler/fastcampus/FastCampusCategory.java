@@ -6,7 +6,12 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum FastCampusCategory {
+    CATEGORY017("디자인", "2D/그래픽/브랜딩", "https://fastcampus.co.kr/category_online_dgnvisual");
 
+    //    CATEGORY031("금융/투자", "재테크/주식", "https://fastcampus.co.kr/category_online_invest");
+//CATEGORY022("영상/3D", "3D·CG", "https://fastcampus.co.kr/category_online_videovfx");
+
+    /*
     CATEGORY001("프로그래밍", "프론트엔드 개발", "https://fastcampus.co.kr/category_online_programmingfront"),
     CATEGORY002("프로그래밍", "백엔드 개발", "https://fastcampus.co.kr/category_online_programmingback"),
     CATEGORY003("프로그래밍", "모바일 앱 개발", "https://fastcampus.co.kr/category_online_programmingapp"),
@@ -48,7 +53,7 @@ public enum FastCampusCategory {
     CATEGORY039("비즈니스/기획", "PM / PO / 기획", "https://fastcampus.co.kr/category_online_bizcom"),
     CATEGORY040("비즈니스/기획", "경영/부업/창업", "https://fastcampus.co.kr/category_online_entrepreneurship"),
     CATEGORY041("비즈니스/기획", "커뮤니케이션/리더십", "https://fastcampus.co.kr/category_online_bizleadership");
-
+    */
     private final String mainCategory;
     private final String subCategory;
     private final String url;

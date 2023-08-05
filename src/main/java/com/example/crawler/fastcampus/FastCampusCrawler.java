@@ -123,7 +123,7 @@ public class FastCampusCrawler {
                             List<WebElement> containers = course.findElements(By.className("card__container"));
 
                             for (WebElement container : containers) {
-                            String title = container.findElement(By.className("card__title")).getText().replaceAll(LINE_SEPARATOR_PATTERN, "");
+                                String title = container.findElement(By.className("card__title")).getText().replaceAll(LINE_SEPARATOR_PATTERN, "");
 
                                 if (title.equals(classTitle)) {
 
