@@ -1,4 +1,4 @@
-package com.example.crawler.fastcampus;
+package com.example.crawler.fastcampus.parsing;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

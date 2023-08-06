@@ -44,7 +44,7 @@ public class ColosoCrawler {
         options.setExperimentalOption("prefs", prefs);
 
         options.setBinary("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome");
-        driver = new ChromeDriver(options);
+        //driver = new ChromeDriver(options);
     }
 
     public void activate() {

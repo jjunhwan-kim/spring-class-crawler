@@ -1,4 +1,4 @@
-package com.example.crawler.fastcampus;
+package com.example.crawler.fastcampus.parsing;
 
 import com.example.crawler.domain.OnlineClass;
 import com.example.crawler.domain.OnlineClassService;
@@ -8,7 +8,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.springframework.stereotype.Component;
 
@@ -43,7 +42,7 @@ public class FastCampusCrawler {
         options.setExperimentalOption("prefs", prefs);
 
         options.setBinary("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome");
-        driver = new ChromeDriver(options);
+        //driver = new ChromeDriver(options);
     }
 
     public void activate() {
