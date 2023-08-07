@@ -22,7 +22,8 @@ public class FastCampusApiCrawler {
     private static final String SOURCE = "Fast Campus";
     private static final String BASE_URL = "https://fastcampus.co.kr";
     private static final String CATEGORIES_URL = BASE_URL + "/.api/www/categories/all";
-    private static final String CATEGORY_CLASS_URL = BASE_URL + "/.api/www/categories/{subCategoryId}/page";
+    private static final String CATEGORY_COURSES_URL = BASE_URL + "/.api/www/categories/{subCategoryId}/page";
+    private static final String COURSE_URL = "https://fastcampus.co.kr/.api/www/courses/{id}/products";
     private final RestTemplate restTemplate = new RestTemplate();
     private final LectureService lectureService;
 
@@ -66,33 +67,58 @@ public class FastCampusApiCrawler {
                 String convertedMainCategory = convertedCategory.get().getConvertedMainCategory();
                 String convertedSubCategory = convertedCategory.get().getConvertedSubCategory();
 
-                String categoryClassUrl = CATEGORY_CLASS_URL.replace("{subCategoryId}", subCategoryId.toString());
+                String categoryCoursesUrl = CATEGORY_COURSES_URL.replace("{subCategoryId}", subCategoryId.toString());
 
-                CategoryClassReadResponseWrapper categoryClassReadResponseWrapper = restTemplate.getForObject(categoryClassUrl, CategoryClassReadResponseWrapper.class);
+                CategoryCoursesReadResponseWrapper categoryCoursesReadResponseWrapper = restTemplate.getForObject(categoryCoursesUrl, CategoryCoursesReadResponseWrapper.class);
 
-                if (categoryClassReadResponseWrapper == null) {
-                    log.error("The return value of endpoint {} is null!", categoryClassUrl);
+                if (categoryCoursesReadResponseWrapper == null) {
+                    log.error("The return value of endpoint {} is null!", categoryCoursesUrl);
                     continue;
                 }
 
-                List<CategoryClassReadResponseWrapper.CategoryClassReadResponse.CategoryInfo.Course> courses = categoryClassReadResponseWrapper.getData().getCategoryInfo().getCourses();
+                List<CategoryCoursesReadResponseWrapper.CategoryCoursesReadResponse.CategoryInfo.Course> courses = categoryCoursesReadResponseWrapper.getData().getCategoryInfo().getCourses();
 
-                for (CategoryClassReadResponseWrapper.CategoryClassReadResponse.CategoryInfo.Course course : courses) {
+                for (CategoryCoursesReadResponseWrapper.CategoryCoursesReadResponse.CategoryInfo.Course course : courses) {
 
                     String slug = course.getSlug().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll(" {2,}", " ").trim();
                     String description = course.getPublicDescription().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll(" {2,}", " ").trim();
                     String title = course.getPublicTitle().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll(" {2,}", " ").trim();
                     String keywords = String.join(",", course.getKeywords()).replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll(" {2,}", " ").trim();
-                    keywords = categoryTitle + "," + subCategoryTitle + "," + keywords;
                     String url = (BASE_URL + "/" + slug).replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll(" {2,}", " ").trim();
                     String imageURl = course.getDesktopCardAsset().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll(" {2,}", " ").trim();
 
+                    Long id = course.getId();
+
+                    String courseUrl = COURSE_URL.replace("{id}", id.toString());
+                    CourseReadResponseWrapper courseReadResponseWrapper = restTemplate.getForObject(courseUrl, CourseReadResponseWrapper.class);
+
+                    if (courseReadResponseWrapper == null) {
+                        log.error("The return value of endpoint {} is null!", courseUrl);
+                        continue;
+                    }
+
+                    List<CourseReadResponseWrapper.CourseReadResponse.Product> products = courseReadResponseWrapper.getData().getProducts();
+
+                    Long price;
+
+                    if (products.isEmpty()) {
+                        price = 0L;
+                    } else {
+                        price = products.get(0).getSalePrice();
+                    }
+
+                    String instructor = courseReadResponseWrapper.getData().getCourse().getInstructor();
+                    if (instructor == null) {
+                        instructor = "";
+                    } else {
+                        instructor = instructor.replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll(" {2,}", " ").trim();
+                    }
 
                     Lecture lecture = new Lecture(title,
                             SOURCE,
                             url,
-                            null,
-                            null,
+                            price.toString(),
+                            instructor,
                             imageURl,
                             categoryTitle,
                             subCategoryTitle,
@@ -129,12 +155,12 @@ public class FastCampusApiCrawler {
     }
 
     @Data
-    public static class CategoryClassReadResponseWrapper {
+    public static class CategoryCoursesReadResponseWrapper {
 
-        private CategoryClassReadResponse data;
+        private CategoryCoursesReadResponse data;
 
         @Data
-        public static class CategoryClassReadResponse {
+        public static class CategoryCoursesReadResponse {
 
             private CategoryInfo categoryInfo;
 
@@ -152,6 +178,37 @@ public class FastCampusApiCrawler {
                     private List<String> keywords;
                     private String desktopCardAsset;
                 }
+            }
+        }
+    }
+
+    @Data
+    public static class CourseReadResponseWrapper {
+
+        private CourseReadResponse data;
+
+        @Data
+        public static class CourseReadResponse {
+
+            private List<Product> products;
+            private Course course;
+
+            @Data
+            public static class Product {
+                private Long id;
+                private Long categoryId;
+                private Long subCategoryId;
+                private Long courseId;
+                private Long listPrice;
+                private Long salePrice;
+            }
+
+            @Data
+            public static class Course {
+                private Long id;
+                private Long categoryId;
+                private Long subCategoryId;
+                private String instructor;
             }
         }
     }

@@ -1,13 +1,11 @@
 package com.example.crawler.coloso;
 
-import com.example.crawler.domain.OnlineClassService;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.springframework.stereotype.Component;
 
@@ -22,11 +20,8 @@ public class ColosoCrawler {
     private static final String WEB_DRIVER_ID = "webdriver.chrome.driver";
     private static final String WEB_DRIVER_PATH = "/Users/junhwan/Desktop/projects/crawler/chromedriver";
     private WebDriver driver;
-    private final OnlineClassService onlineClassService;
 
-    public ColosoCrawler(OnlineClassService onlineClassService) {
-
-        this.onlineClassService = onlineClassService;
+    public ColosoCrawler() {
 
         // WebDriver 경로 설정
         System.setProperty(WEB_DRIVER_ID, WEB_DRIVER_PATH);
