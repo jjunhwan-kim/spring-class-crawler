@@ -18,12 +18,15 @@ public class Lecture {
 
     private String source;
 
+    private String sourceId;
+
     private String url;
 
     private String price;
 
     private String name;
 
+    @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
     private String originalMainCategory;
@@ -40,8 +43,12 @@ public class Lecture {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(columnDefinition = "TINYINT")
+    private Boolean deleted;
+
     public Lecture(String title,
                    String source,
+                   String sourceId,
                    String url,
                    String price,
                    String name,
@@ -54,6 +61,7 @@ public class Lecture {
                    String content) {
         this.title = title;
         this.source = source;
+        this.sourceId = sourceId;
         this.url = url;
         this.price = price;
         this.name = name;
@@ -64,5 +72,23 @@ public class Lecture {
         this.subCategory = subCategory;
         this.keywords = keywords;
         this.content = content;
+        this.deleted = false;
+    }
+
+    public void delete() {
+        this.deleted = true;
+    }
+
+    public void update(Lecture lecture) {
+        this.title = lecture.getTitle();
+        this.url = lecture.getUrl();
+        this.price = lecture.getPrice();
+        this.name = lecture.getName();
+        this.imageUrl = lecture.getImageUrl();
+        this.originalMainCategory = lecture.getOriginalMainCategory();
+        this.originalSubCategory = lecture.getOriginalSubCategory();
+        this.keywords = lecture.getKeywords();
+        this.content = lecture.getContent();
+        this.deleted = false;
     }
 }

@@ -1,11 +1,11 @@
-package com.example.crawler.fastcampus.api;
+package com.example.crawler.fastcampus;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum FastCampusCourseCategory {
+public enum Category {
     CATEGORY001("프로그래밍", "프론트엔드 개발", "프로그래밍", "웹"),
     CATEGORY002("프로그래밍", "백엔드 개발", "프로그래밍", "웹"),
     CATEGORY003("프로그래밍", "모바일 앱 개발", "프로그래밍", "모바일"),
