@@ -39,10 +39,8 @@ public class InflearnCrawler {
         log.info("==================================================");
         List<InflearnCourse> courses = getCourses(categories);
 
-        log.info("Conver inflearn courses to lectures and save lectures");
+        log.info("Convert inflearn courses to lectures and save lectures");
         log.info("==================================================");
-
-        // Convert and Save
         List<Lecture> lectures = convertCourses(courses);
         lectureService.saveOrUpdateLectures(SOURCE, lectures);
     }

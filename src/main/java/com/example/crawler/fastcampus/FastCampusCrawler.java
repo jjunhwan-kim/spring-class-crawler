@@ -2,6 +2,7 @@ package com.example.crawler.fastcampus;
 
 import com.example.crawler.domain.Lecture;
 import com.example.crawler.domain.LectureService;
+import com.example.crawler.inflearn.InflearnCourse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,23 @@ public class FastCampusCrawler {
     private final RestTemplate restTemplate;
     private final LectureService lectureService;
 
+    public void get() {
+
+        log.info("==================================================");
+        log.info("Get fast campus categories");
+        log.info("==================================================");
+        List<CategoryReadResponseWrapper.CategoryReadResponse.Category> categories = getCategories();
+        log.info("==================================================");
+
+        log.info("Get fast campus courses");
+        log.info("==================================================");
+        List<FastCampusCourse> courses = getCourses(categories);
+
+        log.info("Convert fast campus courses to lectures and save lectures");
+        log.info("==================================================");
+        List<Lecture> lectures = convertCourses(courses);
+        lectureService.saveOrUpdateLectures(SOURCE, lectures);
+    }
 
     private List<CategoryReadResponseWrapper.CategoryReadResponse.Category> getCategories() {
 
@@ -36,15 +54,10 @@ public class FastCampusCrawler {
         return categoryReadResponseWrapper.getData().getCategoryMenu();
     }
 
-
-
-    public void get() {
-
-        List<Lecture> lectures = new ArrayList<>();
-
-        List<CategoryReadResponseWrapper.CategoryReadResponse.Category> categories = getCategories();
+    public List<FastCampusCourse> getCourses(List<CategoryReadResponseWrapper.CategoryReadResponse.Category> categories) {
 
         List<FastCampusCourse> fastCampusCourses = new ArrayList<>();
+
         for (CategoryReadResponseWrapper.CategoryReadResponse.Category category : categories) {
 
             String categoryTitle = category.getTitle().replaceAll(LINE_SEPARATOR_PATTERN, "");
@@ -126,10 +139,16 @@ public class FastCampusCrawler {
             }
         }
 
+        return fastCampusCourses;
+    }
+
+    public List<Lecture> convertCourses(List<FastCampusCourse> courses) {
+
+        List<Lecture> lectures = new ArrayList<>();
         // 중복 제거
         Set<Long> sourceIds = new HashSet<>();
 
-        for (FastCampusCourse course : fastCampusCourses) {
+        for (FastCampusCourse course : courses) {
 
             Long id = course.getId();
             if (sourceIds.contains(id)) {
@@ -178,6 +197,6 @@ public class FastCampusCrawler {
             lectures.add(lecture);
         }
 
-        lectureService.saveOrUpdateLectures(SOURCE, lectures);
+        return lectures;
     }
 }
