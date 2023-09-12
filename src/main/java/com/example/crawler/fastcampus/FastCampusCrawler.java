@@ -2,7 +2,6 @@ package com.example.crawler.fastcampus;
 
 import com.example.crawler.domain.Lecture;
 import com.example.crawler.domain.LectureService;
-import com.example.crawler.inflearn.InflearnCourse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
