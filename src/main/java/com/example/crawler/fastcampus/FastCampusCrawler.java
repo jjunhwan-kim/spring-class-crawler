@@ -18,7 +18,7 @@ public class FastCampusCrawler {
     private static final String BASE_URL = "https://fastcampus.co.kr";
     private static final String CATEGORIES_URL = BASE_URL + "/.api/www/categories/all";
     private static final String CATEGORY_COURSES_URL = BASE_URL + "/.api/www/categories/{subCategoryId}/page";
-    private static final String COURSE_URL = "https://fastcampus.co.kr/.api/www/courses/{id}/products";
+    private static final String COURSE_URL = BASE_URL + "/.api/www/courses/{id}/products";
     private static final String LINE_SEPARATOR_PATTERN = "\r\n|[\t\n\r\u2028\u2029\u0085]";
     private final RestTemplate restTemplate;
     private final LectureService lectureService;
@@ -28,7 +28,7 @@ public class FastCampusCrawler {
         log.info("==================================================");
         log.info("Get fast campus categories");
         log.info("==================================================");
-        List<CategoryReadResponseWrapper.CategoryReadResponse.Category> categories = getCategories();
+        List<FastCampusCategoryListReadResponse.Categories.Category> categories = getCategories();
         log.info("==================================================");
 
         log.info("Get fast campus courses");
@@ -41,29 +41,43 @@ public class FastCampusCrawler {
         lectureService.saveOrUpdateLectures(SOURCE, lectures);
     }
 
-    private List<CategoryReadResponseWrapper.CategoryReadResponse.Category> getCategories() {
+    private List<FastCampusCategoryListReadResponse.Categories.Category> getCategories() {
 
-        CategoryReadResponseWrapper categoryReadResponseWrapper = restTemplate.getForObject(CATEGORIES_URL, CategoryReadResponseWrapper.class);
+        FastCampusCategoryListReadResponse response = restTemplate.getForObject(CATEGORIES_URL, FastCampusCategoryListReadResponse.class);
 
-        if (categoryReadResponseWrapper == null) {
+        if (response == null) {
             log.error("Fast Campus course categories read failed, {}", CATEGORIES_URL);
             throw new RuntimeException("Fast Campus course categories read failed");
         }
 
-        return categoryReadResponseWrapper.getData().getCategoryMenu();
+        List<FastCampusCategoryListReadResponse.Categories.Category> categories = response.getCategories().getCategories();
+
+        for (FastCampusCategoryListReadResponse.Categories.Category category : categories) {
+
+            String mainCategoryTitle = category.getTitle();
+
+            List<FastCampusCategoryListReadResponse.Categories.Category> subCategories = category.getChildren();
+
+            for (FastCampusCategoryListReadResponse.Categories.Category subCategory : subCategories) {
+                String subCategoryTitle = subCategory.getTitle();
+                log.info("{}, {}", mainCategoryTitle, subCategoryTitle);
+            }
+        }
+
+        return categories;
     }
 
-    public List<FastCampusCourse> getCourses(List<CategoryReadResponseWrapper.CategoryReadResponse.Category> categories) {
+    public List<FastCampusCourse> getCourses(List<FastCampusCategoryListReadResponse.Categories.Category> categories) {
 
         List<FastCampusCourse> fastCampusCourses = new ArrayList<>();
 
-        for (CategoryReadResponseWrapper.CategoryReadResponse.Category category : categories) {
+        for (FastCampusCategoryListReadResponse.Categories.Category category : categories) {
 
             String categoryTitle = category.getTitle().replaceAll(LINE_SEPARATOR_PATTERN, "");
 
-            List<CategoryReadResponseWrapper.CategoryReadResponse.Category> subCategories = category.getChildren();
+            List<FastCampusCategoryListReadResponse.Categories.Category> subCategories = category.getChildren();
 
-            for (CategoryReadResponseWrapper.CategoryReadResponse.Category subCategory : subCategories) {
+            for (FastCampusCategoryListReadResponse.Categories.Category subCategory : subCategories) {
 
                 String subCategoryTitle = subCategory.getTitle().replaceAll(LINE_SEPARATOR_PATTERN, "");
                 Long subCategoryId = subCategory.getSubCategoryId();
@@ -75,16 +89,16 @@ public class FastCampusCrawler {
 
                 String categoryCoursesUrl = CATEGORY_COURSES_URL.replace("{subCategoryId}", subCategoryId.toString());
 
-                CategoryCoursesReadResponseWrapper categoryCoursesReadResponseWrapper = restTemplate.getForObject(categoryCoursesUrl, CategoryCoursesReadResponseWrapper.class);
+                FastCampusCategoryCoursesReadResponse response = restTemplate.getForObject(categoryCoursesUrl, FastCampusCategoryCoursesReadResponse.class);
 
-                if (categoryCoursesReadResponseWrapper == null) {
+                if (response == null) {
                     log.error("Fast Campus courses read failed, {}", categoryCoursesUrl);
                     continue;
                 }
 
-                List<CategoryCoursesReadResponseWrapper.CategoryCoursesReadResponse.CategoryInfo.Course> courses = categoryCoursesReadResponseWrapper.getData().getCategoryInfo().getCourses();
+                List<FastCampusCategoryCoursesReadResponse.CategoryCoursesReadResponse.Courses.Course> courses = response.getCourses().getCourses().getCourses();
 
-                for (CategoryCoursesReadResponseWrapper.CategoryCoursesReadResponse.CategoryInfo.Course course : courses) {
+                for (FastCampusCategoryCoursesReadResponse.CategoryCoursesReadResponse.Courses.Course course : courses) {
 
                     Long id = course.getId();
                     String slug = course.getSlug().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll(" {2,}", " ").trim();
@@ -95,14 +109,14 @@ public class FastCampusCrawler {
                     String imageURl = course.getDesktopCardAsset().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll(" {2,}", " ").trim();
 
                     String courseApiUrl = COURSE_URL.replace("{id}", id.toString());
-                    CourseReadResponseWrapper courseReadResponseWrapper = restTemplate.getForObject(courseApiUrl, CourseReadResponseWrapper.class);
+                    FastCampusCourseReadResponse courseResponse = restTemplate.getForObject(courseApiUrl, FastCampusCourseReadResponse.class);
 
-                    if (courseReadResponseWrapper == null) {
+                    if (courseResponse == null) {
                         log.error("Fast Campus course read failed, {}", courseApiUrl);
                         continue;
                     }
 
-                    List<CourseReadResponseWrapper.CourseReadResponse.Product> products = courseReadResponseWrapper.getData().getProducts();
+                    List<FastCampusCourseReadResponse.CourseInfo.Product> products = courseResponse.getCourseInfo().getProducts();
 
                     Long price;
 
@@ -112,7 +126,7 @@ public class FastCampusCrawler {
                         price = products.get(0).getSalePrice();
                     }
 
-                    String instructor = courseReadResponseWrapper.getData().getCourse().getInstructor();
+                    String instructor = courseResponse.getCourseInfo().getCourse().getInstructor();
                     if (instructor == null) {
                         instructor = "";
                     } else {

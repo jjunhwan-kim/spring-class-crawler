@@ -1,21 +1,24 @@
 package com.example.crawler.fastcampus;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
 
 @Data
-public class CategoryCoursesReadResponseWrapper {
+public class FastCampusCategoryCoursesReadResponse {
 
-    private CategoryCoursesReadResponse data;
+    @JsonProperty("data")
+    private CategoryCoursesReadResponse courses;
 
     @Data
     public static class CategoryCoursesReadResponse {
 
-        private CategoryInfo categoryInfo;
+        @JsonProperty("categoryInfo")
+        private Courses courses;
 
         @Data
-        public static class CategoryInfo {
+        public static class Courses {
 
             private List<Course> courses;
 
