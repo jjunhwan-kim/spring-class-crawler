@@ -34,11 +34,10 @@ public class InflearnCrawler {
         log.info("==================================================");
         List<InflearnCategory> categories = getCategories();
         log.info("==================================================");
-
         log.info("Get inflearn courses");
         log.info("==================================================");
         List<InflearnCourse> courses = getCourses(categories);
-
+        log.info("==================================================");
         log.info("Convert inflearn courses to lectures and save lectures");
         log.info("==================================================");
         List<Lecture> lectures = convertCourses(courses);

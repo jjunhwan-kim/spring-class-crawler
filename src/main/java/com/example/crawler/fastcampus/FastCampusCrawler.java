@@ -30,11 +30,10 @@ public class FastCampusCrawler {
         log.info("==================================================");
         List<FastCampusCategoryListReadResponse.Categories.Category> categories = getCategories();
         log.info("==================================================");
-
         log.info("Get fast campus courses");
         log.info("==================================================");
         List<FastCampusCourse> courses = getCourses(categories);
-
+        log.info("==================================================");
         log.info("Convert fast campus courses to lectures and save lectures");
         log.info("==================================================");
         List<Lecture> lectures = convertCourses(courses);
