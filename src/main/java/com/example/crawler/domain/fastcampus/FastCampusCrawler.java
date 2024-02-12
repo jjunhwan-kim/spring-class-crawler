@@ -1,7 +1,7 @@
-package com.example.crawler.fastcampus;
+package com.example.crawler.domain.fastcampus;
 
-import com.example.crawler.domain.Lecture;
-import com.example.crawler.domain.LectureService;
+import com.example.crawler.domain.lecture.Lecture;
+import com.example.crawler.domain.lecture.LectureService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -185,7 +185,7 @@ public class FastCampusCrawler {
                     .findFirst();
 
             if (convertedCategory.isEmpty()) {
-                log.error("Category conversion failed! Main Category: {}, Sub Category: {}", mainCategory, subCategory);
+                log.error("ColosoCategoryMap conversion failed! Main ColosoCategoryMap: {}, Sub ColosoCategoryMap: {}", mainCategory, subCategory);
                 continue;
             }
 

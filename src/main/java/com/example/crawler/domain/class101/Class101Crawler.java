@@ -1,7 +1,13 @@
-package com.example.crawler.coloso;
+package com.example.crawler.domain.class101;
 
-import com.example.crawler.domain.Lecture;
-import com.example.crawler.domain.LectureService;
+import com.example.crawler.domain.common.Category;
+import com.example.crawler.domain.coloso.ColosoCategoryMap;
+import com.example.crawler.domain.coloso.ColosoCourse;
+import com.example.crawler.domain.coloso.Product;
+import com.example.crawler.domain.coloso.response.ColosoCategoryListResponse;
+import com.example.crawler.domain.coloso.response.ColosoCourseReadResponse;
+import com.example.crawler.domain.lecture.Lecture;
+import com.example.crawler.domain.lecture.LectureService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +16,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
@@ -19,62 +26,99 @@ import java.util.*;
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class ColosoCrawler {
+public class Class101Crawler {
 
-    private static final String SOURCE = "coloso";
-    private static final String BASE_URL = "https://coloso.co.kr/";
+    private static final String SOURCE = "class101";
+    private static final String BASE_URL = "http://localhost:8888/hello";
     private static final String CATEGORIES_URL = BASE_URL + "/api/displays";
     private static final String CATEGORY_COURSES_URL = BASE_URL + "/category";
     private static final String COURSE_URL = BASE_URL + "/api/catalogs/courses";
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final LectureService lectureService;
+    private final RetryTemplate retryTemplate;
 
     public void get() {
 
-        log.info("==================================================");
-        log.info("Get coloso categories");
-        log.info("==================================================");
-        List<ColosoCategoryListReadResponse.Category> categories = getCategories();
-        log.info("==================================================");
-        log.info("Get coloso courses");
-        log.info("==================================================");
-        List<ColosoCourse> courses = getCourses(categories);
-        log.info("==================================================");
-        log.info("Convert coloso courses to lectures and save lectures");
-        List<Lecture> lectures = convertCourses(courses);
-        lectureService.saveOrUpdateLectures(SOURCE, lectures);
+
+        String response = retryTemplate.execute(context -> restTemplate.getForObject(BASE_URL, String.class));
+        System.out.println(response);
+
+
+//        log.info("==================================================");
+//        log.info("Get coloso categories");
+//        log.info("==================================================");
+//        List<ColosoCategoryListReadResponse.ColosoCategoryMap> categories = getCategories();
+//        log.info("==================================================");
+//        log.info("Get coloso courses");
+//        log.info("==================================================");
+//        List<ColosoCourse> courses = getCourses(categories);
+//        log.info("==================================================");
+//        log.info("Convert coloso courses to lectures and save lectures");
+//        List<Lecture> lectures = convertCourses(courses);
+//        lectureService.saveOrUpdateLectures(SOURCE, lectures);
     }
 
-    private List<ColosoCategoryListReadResponse.Category> getCategories() {
+    private ColosoCategoryListResponse getCategories() {
 
-        ColosoCategoryListReadResponse response = restTemplate.getForObject(CATEGORIES_URL, ColosoCategoryListReadResponse.class);
+        ColosoCategoryListResponse response = restTemplate.getForObject(CATEGORIES_URL, ColosoCategoryListResponse.class);
 
         if (response == null) {
-            log.error("Coloso course categories read failed, {}", CATEGORIES_URL);
-            throw new RuntimeException("Coloso course categories read failed");
+            throw new IllegalStateException("Coloso category list read failed");
         }
 
-        List<ColosoCategoryListReadResponse.Category> categories = response.getCategories();
-
-        for (ColosoCategoryListReadResponse.Category category : categories) {
-            String mainCategory = category.getTitle();
-            List<ColosoCategoryListReadResponse.Category> children = category.getChildren();
-            for (ColosoCategoryListReadResponse.Category child : children) {
-                String subCategory = child.getTitle();
-                log.info("{}, {}", mainCategory, subCategory);
-            }
-        }
-
-        return categories;
+        return response;
     }
 
-    private List<ColosoCourse> getCourses(List<ColosoCategoryListReadResponse.Category> categories) {
+    public boolean isHideMenu(ColosoCategoryListResponse.Category category) {
+
+        ColosoCategoryListResponse.Category.Extras extras = category.getExtras();
+
+        Boolean hideMenu = extras.getHideMenu();
+
+        if (hideMenu != null && hideMenu) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public List<Category> convertCategories(ColosoCategoryListResponse response) {
+
+        List<Category> categoryList = new ArrayList<>();
+        List<ColosoCategoryListResponse.Category> mainCategories = response.getData();
+
+        for (ColosoCategoryListResponse.Category mainCategory : mainCategories) {
+
+            if (isHideMenu(mainCategory)) {
+                continue;
+            }
+
+            List<ColosoCategoryListResponse.Category> subCategories = mainCategory.getChildren();
+
+            List<Category> subCategoryList = new ArrayList<>();
+
+            for (ColosoCategoryListResponse.Category subCategory : subCategories) {
+
+                if (isHideMenu(mainCategory)) {
+                    continue;
+                }
+
+                subCategoryList.add(new Category(mainCategory.getId(), subCategory.getTitle(), Collections.emptyList()));
+            }
+
+            categoryList.add(new Category(mainCategory.getId(), mainCategory.getTitle(), subCategoryList));
+        }
+
+        return categoryList;
+    }
+
+    private List<ColosoCourse> getCourses(List<ColosoCategoryListResponse.Category> categories) {
 
         List<ColosoCourse> colosoCourses = new ArrayList<>();
-        for (ColosoCategoryListReadResponse.Category category : categories) {
+        for (ColosoCategoryListResponse.Category category : categories) {
 
-            for (ColosoCategoryListReadResponse.Category child : category.getChildren()) {
+            for (ColosoCategoryListResponse.Category child : category.getChildren()) {
 
                 String mainCategoryTitle = category.getTitle();
                 String subCategoryTitle = child.getTitle();
@@ -211,7 +255,7 @@ public class ColosoCrawler {
                     }
 
                 } catch (Exception exception) {
-                    log.error("Category courses read failed, {}, {}", mainCategoryTitle, subCategoryTitle);
+                    log.error("ColosoCategoryMap courses read failed, {}, {}", mainCategoryTitle, subCategoryTitle);
                 }
             }
         }
@@ -244,13 +288,13 @@ public class ColosoCrawler {
             String url = course.getUrl();
             String imageUrl = course.getImageUrl();
 
-            Optional<Category> convertedCategory = Arrays.stream(Category.values()).filter(category ->
-                            category.getOriginalMainCategory().equals(mainCategory) &&
-                                    category.getOriginalSubCategory().equals(subCategory))
+            Optional<ColosoCategoryMap> convertedCategory = Arrays.stream(ColosoCategoryMap.values()).filter(colosoCategoryMap ->
+                            colosoCategoryMap.getOriginalMainCategory().equals(mainCategory) &&
+                                    colosoCategoryMap.getOriginalSubCategory().equals(subCategory))
                     .findFirst();
 
             if (convertedCategory.isEmpty()) {
-                log.error("Category conversion failed! Main Category: {}, Sub Category: {}", mainCategory, subCategory);
+                log.error("ColosoCategoryMap conversion failed! Main ColosoCategoryMap: {}, Sub ColosoCategoryMap: {}", mainCategory, subCategory);
                 continue;
             }
 

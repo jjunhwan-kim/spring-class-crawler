@@ -1,7 +1,7 @@
-package com.example.crawler.inflearn;
+package com.example.crawler.domain.inflearn;
 
-import com.example.crawler.domain.Lecture;
-import com.example.crawler.domain.LectureService;
+import com.example.crawler.domain.lecture.Lecture;
+import com.example.crawler.domain.lecture.LectureService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -115,7 +115,7 @@ public class InflearnCrawler {
                     continue;
                 }
                 String lastPage = lastPageAnchor.text();
-                log.info("Category last page is {}", lastPage);
+                log.info("ColosoCategoryMap last page is {}", lastPage);
 
                 lastPageNumber = Long.parseLong(lastPage);
 
@@ -246,7 +246,7 @@ public class InflearnCrawler {
                     .findFirst();
 
             if (convertedCategory.isEmpty()) {
-                log.error("Category conversion failed! Main Category: {}, Sub Category: {}", originalMainCategory, originalSubCategory);
+                log.error("ColosoCategoryMap conversion failed! Main ColosoCategoryMap: {}, Sub ColosoCategoryMap: {}", originalMainCategory, originalSubCategory);
                 continue;
             }
 

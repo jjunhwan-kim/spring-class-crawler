@@ -1,11 +1,11 @@
-package com.example.crawler.fastcampus;
+package com.example.crawler.domain.coloso;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Getter
-public class FastCampusCourse {
+public class ColosoCourse {
     private final Long id;
     private final String title;
     private final Long price;

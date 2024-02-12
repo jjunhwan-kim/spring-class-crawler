@@ -1,4 +1,4 @@
-package com.example.crawler.config;
+package com.example.crawler.global.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -26,9 +26,17 @@ public class RestTemplateConfig {
         return restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(5))
                 .setReadTimeout(Duration.ofSeconds(5))
-                .additionalInterceptors(clientHttpRequestInterceptor(), new LoggingInterceptor())
-                .requestFactory(() -> new BufferingClientHttpRequestFactory(new SimpleClientHttpRequestFactory()))
+//                .additionalInterceptors(new LoggingInterceptor())
+                //.additionalInterceptors(clientHttpRequestInterceptor(), new LoggingInterceptor())
+                //.requestFactory(() -> new BufferingClientHttpRequestFactory(new SimpleClientHttpRequestFactory()))
                 .build();
+    }
+
+    @Bean
+    public RetryTemplate retryTemplate() {
+        RetryTemplate retryTemplate = new RetryTemplate();
+        retryTemplate.setRetryPolicy(new SimpleRetryPolicy(3));
+        return retryTemplate;
     }
 
     public ClientHttpRequestInterceptor clientHttpRequestInterceptor() {

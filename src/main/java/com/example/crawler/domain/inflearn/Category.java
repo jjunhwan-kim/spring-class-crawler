@@ -1,4 +1,4 @@
-package com.example.crawler.inflearn;
+package com.example.crawler.domain.inflearn;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

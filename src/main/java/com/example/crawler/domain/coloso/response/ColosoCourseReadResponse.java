@@ -1,4 +1,4 @@
-package com.example.crawler.coloso;
+package com.example.crawler.domain.coloso.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

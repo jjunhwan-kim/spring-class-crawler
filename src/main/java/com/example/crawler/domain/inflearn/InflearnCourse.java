@@ -1,4 +1,4 @@
-package com.example.crawler.inflearn;
+package com.example.crawler.domain.inflearn;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

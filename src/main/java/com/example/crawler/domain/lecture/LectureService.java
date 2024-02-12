@@ -1,4 +1,4 @@
-package com.example.crawler.domain;
+package com.example.crawler.domain.lecture;
 
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;

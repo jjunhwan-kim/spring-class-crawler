@@ -1,4 +1,4 @@
-package com.example.crawler.fastcampus;
+package com.example.crawler.domain.fastcampus;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
