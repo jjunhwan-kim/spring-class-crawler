@@ -101,7 +101,7 @@ public class ColosoCrawler {
                     continue;
                 }
 
-                subCategoryList.add(new Category(mainCategory.getId(), subCategory.getTitle(), Collections.emptyList()));
+                subCategoryList.add(new Category(subCategory.getId(), subCategory.getTitle(), Collections.emptyList()));
             }
 
             if (subCategoryList.isEmpty()) {
@@ -283,11 +283,11 @@ public class ColosoCrawler {
         for (ColosoCourse course : courses) {
 
             Long id = course.getId();
-            if (sourceIds.contains(id)) {
-                continue;
-            } else {
-                sourceIds.add(id);
-            }
+//            if (sourceIds.contains(id)) {
+//                continue;
+//            } else {
+//                sourceIds.add(id);
+//            }
 
             String title = course.getTitle().replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
             Long price = course.getPrice();
