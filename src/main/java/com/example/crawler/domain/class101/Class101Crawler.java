@@ -4,8 +4,8 @@ import com.example.crawler.domain.common.Category;
 import com.example.crawler.domain.coloso.ColosoCategoryMap;
 import com.example.crawler.domain.coloso.ColosoCourse;
 import com.example.crawler.domain.coloso.Product;
-import com.example.crawler.domain.coloso.response.ColosoCategoryListResponse;
-import com.example.crawler.domain.coloso.response.ColosoCourseReadResponse;
+import com.example.crawler.domain.coloso.response.ColosoCategoriesResponse;
+import com.example.crawler.domain.coloso.response.ColosoCourseResponse;
 import com.example.crawler.domain.lecture.Lecture;
 import com.example.crawler.domain.lecture.LectureService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,9 +59,9 @@ public class Class101Crawler {
 //        lectureService.saveOrUpdateLectures(SOURCE, lectures);
     }
 
-    private ColosoCategoryListResponse getCategories() {
+    private ColosoCategoriesResponse getCategories() {
 
-        ColosoCategoryListResponse response = restTemplate.getForObject(CATEGORIES_URL, ColosoCategoryListResponse.class);
+        ColosoCategoriesResponse response = restTemplate.getForObject(CATEGORIES_URL, ColosoCategoriesResponse.class);
 
         if (response == null) {
             throw new IllegalStateException("Coloso category list read failed");
@@ -70,9 +70,9 @@ public class Class101Crawler {
         return response;
     }
 
-    public boolean isHideMenu(ColosoCategoryListResponse.Category category) {
+    public boolean isHideMenu(ColosoCategoriesResponse.Category category) {
 
-        ColosoCategoryListResponse.Category.Extras extras = category.getExtras();
+        ColosoCategoriesResponse.Category.Extras extras = category.getExtras();
 
         Boolean hideMenu = extras.getHideMenu();
 
@@ -83,22 +83,22 @@ public class Class101Crawler {
         return false;
     }
 
-    public List<Category> convertCategories(ColosoCategoryListResponse response) {
+    public List<Category> convertCategories(ColosoCategoriesResponse response) {
 
         List<Category> categoryList = new ArrayList<>();
-        List<ColosoCategoryListResponse.Category> mainCategories = response.getData();
+        List<ColosoCategoriesResponse.Category> mainCategories = response.getData();
 
-        for (ColosoCategoryListResponse.Category mainCategory : mainCategories) {
+        for (ColosoCategoriesResponse.Category mainCategory : mainCategories) {
 
             if (isHideMenu(mainCategory)) {
                 continue;
             }
 
-            List<ColosoCategoryListResponse.Category> subCategories = mainCategory.getChildren();
+            List<ColosoCategoriesResponse.Category> subCategories = mainCategory.getChildren();
 
             List<Category> subCategoryList = new ArrayList<>();
 
-            for (ColosoCategoryListResponse.Category subCategory : subCategories) {
+            for (ColosoCategoriesResponse.Category subCategory : subCategories) {
 
                 if (isHideMenu(mainCategory)) {
                     continue;
@@ -113,12 +113,12 @@ public class Class101Crawler {
         return categoryList;
     }
 
-    private List<ColosoCourse> getCourses(List<ColosoCategoryListResponse.Category> categories) {
+    private List<ColosoCourse> getCourses(List<ColosoCategoriesResponse.Category> categories) {
 
         List<ColosoCourse> colosoCourses = new ArrayList<>();
-        for (ColosoCategoryListResponse.Category category : categories) {
+        for (ColosoCategoriesResponse.Category category : categories) {
 
-            for (ColosoCategoryListResponse.Category child : category.getChildren()) {
+            for (ColosoCategoriesResponse.Category child : category.getChildren()) {
 
                 String mainCategoryTitle = category.getTitle();
                 String subCategoryTitle = child.getTitle();
@@ -188,19 +188,19 @@ public class Class101Crawler {
                         Product.Offer.PriceSpecification priceSpecification = priceSpecifications.get(0);
                         Long price = priceSpecification.getPrice();
 
-                        ColosoCourseReadResponse response = restTemplate.getForObject(COURSE_URL + "?id=" + id.toString(), ColosoCourseReadResponse.class);
+                        ColosoCourseResponse response = restTemplate.getForObject(COURSE_URL + "?id=" + id.toString(), ColosoCourseResponse.class);
                         if (response == null) {
                             log.error("Course read failed");
                             continue;
                         }
 
-                        List<ColosoCourseReadResponse.Course> courses = response.getCourses();
+                        List<ColosoCourseResponse.Course> courses = response.getCourses();
                         if (courses.isEmpty()) {
                             log.error("Price specification is empty");
                             continue;
                         }
 
-                        ColosoCourseReadResponse.Course course = courses.get(0);
+                        ColosoCourseResponse.Course course = courses.get(0);
 
                         String title = course.getPublicTitle();
                         String instructor = course.getInstructor();
@@ -208,7 +208,7 @@ public class Class101Crawler {
                         String imageUrl = course.getDesktopCardAsset();
 
                         StringBuilder sb = new StringBuilder();
-                        ColosoCourseReadResponse.Course.Extras extras = course.getExtras();
+                        ColosoCourseResponse.Course.Extras extras = course.getExtras();
                         if (extras != null) {
                             String text1 = extras.getAdditionalText1();
                             String text2 = extras.getAdditionalText2();
