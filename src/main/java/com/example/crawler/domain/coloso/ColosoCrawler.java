@@ -54,6 +54,14 @@ public class ColosoCrawler {
         log.info("==================================================");
     }
 
+    private void delay(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException exception) {
+            throw new RuntimeException(exception);
+        }
+    }
+
     private ColosoCategoriesResponse getCategories() {
 
         ColosoCategoriesResponse response = restTemplate.getForObject(CATEGORIES_URL, ColosoCategoriesResponse.class);
@@ -114,15 +122,6 @@ public class ColosoCrawler {
         return convertedCategories;
     }
 
-    private void delay(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException exception) {
-            throw new RuntimeException(exception);
-        }
-    }
-
-
     private List<ColosoCourse> getCourses(List<Category> categories) {
 
         List<ColosoCourse> colosoCourses = new ArrayList<>();
@@ -140,6 +139,7 @@ public class ColosoCrawler {
                 try {
                     log.info("Main Category: {}, Sub Category: {}", mainCategoryTitle, subCategoryTitle);
 
+                    // 카테고리의 강의 목록 크롤링
                     Connection connection = Jsoup.connect(url);
                     Document document = connection.get();
                     delay(500);
@@ -165,6 +165,7 @@ public class ColosoCrawler {
                             continue;
                         }
 
+                        // 강의 상세 페이지에서 script 요소 조회(type="application/ld+json")
                         Element scriptElement = document.select("script[type=\"application/ld+json\"]").first();
                         if (scriptElement == null) {
                             log.error("<script type\"application/ld+json\"> does not exists");
@@ -198,6 +199,7 @@ public class ColosoCrawler {
                         Product.Offer.PriceSpecification priceSpecification = priceSpecifications.get(0);
                         Long price = priceSpecification.getPrice();
 
+                        // 강의 API 호출
                         ColosoCourseResponse response = restTemplate.getForObject(COURSE_URL + "?id=" + id.toString(), ColosoCourseResponse.class);
                         delay(500);
 
@@ -305,7 +307,7 @@ public class ColosoCrawler {
                     .findFirst();
 
             if (convertedCategory.isEmpty()) {
-                log.error("ColosoCategoryMap conversion failed! Main ColosoCategoryMap: {}, Sub ColosoCategoryMap: {}", mainCategory, subCategory);
+                log.error("Coloso category map conversion failed! Main ColosoCategoryMap: {}, Sub ColosoCategoryMap: {}", mainCategory, subCategory);
                 continue;
             }
 
