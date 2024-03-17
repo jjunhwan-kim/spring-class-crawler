@@ -6,7 +6,6 @@ logging:
   file:
     name: log.log
 
-
 ---
 spring:
   h2:
@@ -15,11 +14,6 @@ spring:
       path: /h2-console
 
   datasource:
-#    url: jdbc:h2:mem:testdb;MODE=MySQL
-#    username: sa
-#    password:
-#    driver-class-name: org.h2.Driver
-
     url: jdbc:mysql://localhost:3306/test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&useUnicode=true&character_set_server=utf8mb4
     username: root
     password: root
@@ -39,6 +33,6 @@ spring:
 logging:
   level:
     org.hibernate.SQL: DEBUG
-    #org.hibernate.type: TRACE
+    org.hibernate.type: TRACE
     org.hibernate.orm.jdbc.bind: TRACE
     org.hibernate.orm.jdbc.extract: TRACE
