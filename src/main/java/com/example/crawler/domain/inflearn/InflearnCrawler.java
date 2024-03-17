@@ -37,6 +37,7 @@ public class InflearnCrawler {
         log.info("==================================================");
         log.info("Get Inflearn categories..");
         List<Category> categories = getAndConvertCategories();
+        printCategories(categories);
         validateCategories(categories);
 
         log.info("==================================================");
@@ -78,6 +79,9 @@ public class InflearnCrawler {
             Elements subCategories = mainCategoryDivision.select("> div.accordion-body > a.accordion-content");
 
             for (Element subCategory : subCategories) {
+                if (subCategory.hasClass("accordion-content--all")) {
+                    continue;
+                }
                 String subCategoryTitle = subCategory.text().trim();
                 String url = subCategory.attr("abs:href");
 
@@ -313,5 +317,15 @@ public class InflearnCrawler {
         }
 
         return lectures;
+    }
+
+    private void printCategories(List<Category> categories) {
+        for (Category category : categories) {
+            List<Category> subCategories = category.getSubCategories();
+
+            for (Category subCategory : subCategories) {
+                log.info("{}\t{}\t{}", category.getTitle(), subCategory.getTitle(), subCategory.getUrl());
+            }
+        }
     }
 }

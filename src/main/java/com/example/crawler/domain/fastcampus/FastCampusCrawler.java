@@ -39,6 +39,7 @@ public class FastCampusCrawler {
         log.info("Get Fast Campus categories..");
         FastCampusCategoriesResponse response = getCategories();
         List<Category> categories = convertCategories(response);
+        printCategories(categories);
         validateCategories(categories);
 
         log.info("==================================================");
@@ -326,5 +327,15 @@ public class FastCampusCrawler {
         }
 
         return lectures;
+    }
+
+    private void printCategories(List<Category> categories) {
+        for (Category category : categories) {
+            List<Category> subCategories = category.getSubCategories();
+
+            for (Category subCategory : subCategories) {
+                log.info("{}\t{}\t{}", category.getTitle(), subCategory.getTitle(), subCategory.getUrl());
+            }
+        }
     }
 }

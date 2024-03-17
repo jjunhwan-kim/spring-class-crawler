@@ -87,6 +87,8 @@ public class Lecture {
         this.imageUrl = lecture.getImageUrl();
         this.originalMainCategory = lecture.getOriginalMainCategory();
         this.originalSubCategory = lecture.getOriginalSubCategory();
+        this.mainCategory = lecture.getMainCategory();
+        this.subCategory = lecture.getSubCategory();
         this.keywords = lecture.getKeywords();
         this.content = lecture.getContent();
         this.deleted = false;

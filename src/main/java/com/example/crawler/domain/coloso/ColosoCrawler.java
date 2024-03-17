@@ -43,6 +43,7 @@ public class ColosoCrawler {
         log.info("Get Coloso categories..");
         ColosoCategoriesResponse response = getCategories();
         List<Category> categories = convertCategories(response);
+        printCategories(categories);
         validateCategories(categories);
 
         log.info("==================================================");
@@ -401,5 +402,15 @@ public class ColosoCrawler {
         Boolean hideMenu = extras.getHideMenu();
 
         return hideMenu != null && hideMenu;
+    }
+
+    private void printCategories(List<Category> categories) {
+        for (Category category : categories) {
+            List<Category> subCategories = category.getSubCategories();
+
+            for (Category subCategory : subCategories) {
+                log.info("{}\t{}\t{}", category.getTitle(), subCategory.getTitle(), subCategory.getUrl());
+            }
+        }
     }
 }
