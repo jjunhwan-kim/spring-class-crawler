@@ -19,12 +19,12 @@ public class ApiService {
 
     private final RestTemplate restTemplate;
 
-    @Retryable(retryFor = {Exception.class}, backoff = @Backoff(delay = 10000))
+    @Retryable(retryFor = {Exception.class}, maxAttempts = 5, backoff = @Backoff(delay = 30000))
     public <T> T get(String url, Class<T> responseType) {
         log.info("Request URL: {}", url);
 
         try {
-            Thread.sleep(10000);
+            Thread.sleep(5000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -32,12 +32,12 @@ public class ApiService {
         return restTemplate.getForObject(url, responseType);
     }
 
-    @Retryable(retryFor = {Exception.class}, backoff = @Backoff(delay = 10000))
+    @Retryable(retryFor = {Exception.class}, maxAttempts = 5, backoff = @Backoff(delay = 30000))
     public Document get(String url) throws IOException {
         log.info("Request URL: {}", url);
 
         try {
-            Thread.sleep(10000);
+            Thread.sleep(5000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
