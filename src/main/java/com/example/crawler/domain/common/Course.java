@@ -1,11 +1,11 @@
-package com.example.crawler.domain.coloso;
+package com.example.crawler.domain.common;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Getter
-public class ColosoCourse {
+public class Course {
     private final Long id;
     private final String title;
     private final Long price;
@@ -14,7 +14,7 @@ public class ColosoCourse {
     private final String instructor;
     private final String mainCategory;
     private final String subCategory;
-    private final String url;
+    private final String courseUrl;
     private final String imageUrl;
 
     @Override
@@ -27,7 +27,7 @@ public class ColosoCourse {
                 subCategory + "\t" +
                 description + "\t" +
                 keywords + "\t" +
-                url + "\t" +
+                courseUrl + "\t" +
                 imageUrl;
     }
 }

@@ -1,4 +1,4 @@
-package com.example.crawler.domain.fastcampus;
+package com.example.crawler.domain.fastcampus.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -6,13 +6,13 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class FastCampusCourseReadResponse {
+public class FastCampusCourseResponse {
 
     @JsonProperty("data")
-    private CourseInfo courseInfo;
+    private Data data;
 
-    @Data
-    public static class CourseInfo {
+    @lombok.Data
+    public static class Data {
 
         @JsonProperty("products")
         private List<Product> products;
@@ -20,7 +20,7 @@ public class FastCampusCourseReadResponse {
         @JsonProperty("course")
         private Course course;
 
-        @Data
+        @lombok.Data
         public static class Product {
             private Long id;
             private Long categoryId;
@@ -30,7 +30,7 @@ public class FastCampusCourseReadResponse {
             private Long salePrice;
         }
 
-        @Data
+        @lombok.Data
         public static class Course {
             private Long id;
             private Long categoryId;

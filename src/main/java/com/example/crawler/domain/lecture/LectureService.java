@@ -1,6 +1,5 @@
 package com.example.crawler.domain.lecture;
 
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -18,15 +17,17 @@ import java.util.stream.Collectors;
 public class LectureService {
 
     private final LectureRepository lectureRepository;
-    private final EntityManager entityManager;
 
     @Transactional
     public void saveOrUpdateLectures(String source, List<Lecture> lectures) {
 
-        List<Lecture> savedLectures = lectureRepository.findBySource(source);
+        List<String> ids = lectures.stream().map(Lecture::getSourceId)
+                .toList();
+
+        List<Lecture> savedLectures = lectureRepository.findBySourceAndSourceIdIn(source, ids);
 
         // Delete all lectures
-        savedLectures.forEach(Lecture::delete);
+        // savedLectures.forEach(Lecture::delete);
 
         Map<String, Lecture> savedLectureMap = savedLectures.stream()
                 .collect(Collectors.toMap(Lecture::getSourceId, Function.identity()));

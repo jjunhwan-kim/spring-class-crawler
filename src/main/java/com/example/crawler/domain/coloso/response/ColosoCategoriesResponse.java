@@ -1,5 +1,6 @@
 package com.example.crawler.domain.coloso.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
@@ -7,7 +8,8 @@ import java.util.List;
 @Data
 public class ColosoCategoriesResponse {
 
-    private List<Category> data;
+    @JsonProperty("data")
+    private List<Category> categories;
 
     @Data
     public static class Category {

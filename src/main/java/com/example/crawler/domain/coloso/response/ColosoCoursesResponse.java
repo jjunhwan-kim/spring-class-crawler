@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class ColosoCourseResponse {
+public class ColosoCoursesResponse {
 
     @JsonProperty("data")
     private List<Course> courses;
