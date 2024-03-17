@@ -83,18 +83,29 @@ public class FastCampusCrawler {
 
             for (FastCampusCategoriesResponse.Data.Category subCategory : subCategories) {
 
-                if (subCategory.getSubCategoryId() == null) {
+                Long subCategoryId = subCategory.getSubCategoryId();
+                if (subCategoryId == null) {
                     continue;
                 }
 
-                convertedSubCategories.add(new Category(subCategory.getSubCategoryId(), subCategory.getTitle().trim(), Collections.emptyList()));
+                String url = UriComponentsBuilder.fromUriString(COURSES_URL)
+                        .buildAndExpand(subCategoryId.toString())
+                        .toUriString();
+
+                convertedSubCategories.add(new Category(subCategoryId,
+                        subCategory.getTitle().trim(),
+                        url,
+                        Collections.emptyList()));
             }
 
             if (convertedSubCategories.isEmpty()) {
                 continue;
             }
 
-            convertedMainCategories.add(new Category(mainCategory.getCategoryId(), mainCategory.getTitle().trim(), convertedSubCategories));
+            convertedMainCategories.add(new Category(mainCategory.getCategoryId(),
+                    mainCategory.getTitle().trim(),
+                    "",
+                    convertedSubCategories));
         }
 
         return convertedMainCategories;
@@ -155,11 +166,7 @@ public class FastCampusCrawler {
 
         String mainCategoryTitle = category.getTitle();
         String subCategoryTitle = subCategory.getTitle();
-        Long subCategoryId = subCategory.getId();
-
-        String url = UriComponentsBuilder.fromUriString(COURSES_URL)
-                .buildAndExpand(subCategoryId.toString())
-                .toUriString();
+        String url = subCategory.getUrl();
 
         // 강의 목록 API
         FastCampusCoursesResponse response;

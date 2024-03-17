@@ -1,5 +1,7 @@
 package com.example.crawler.domain.inflearn;
 
+import com.example.crawler.domain.common.ApiService;
+import com.example.crawler.domain.common.Category;
 import com.example.crawler.domain.lecture.Lecture;
 import com.example.crawler.domain.lecture.LectureService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +17,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -22,67 +25,108 @@ import java.util.*;
 public class InflearnCrawler {
 
     private static final String SOURCE = "inflearn";
-    private static final String URL = "https://www.inflearn.com";
-    private static final String COURSE_URL = URL + "/courses";
+    private static final String COURSE_URL = "https://www.inflearn.com/courses";
     private final ObjectMapper objectMapper;
+    private final ApiService apiService;
     private final LectureService lectureService;
 
     public void get() {
 
         log.info("==================================================");
-        log.info("Get inflearn categories");
+        log.info("Inflearn Crawler Start");
         log.info("==================================================");
-        List<InflearnCategory> categories = getCategories();
+        log.info("Get Inflearn categories..");
+        List<Category> categories = getAndConvertCategories();
+        validateCategories(categories);
+
         log.info("==================================================");
-        log.info("Get inflearn courses");
+        log.info("Get Inflearn courses..");
+        //getAndSaveCourses(categories);
+
         log.info("==================================================");
-        List<InflearnCourse> courses = getCourses(categories);
+        log.info("Inflearn Crawler End");
         log.info("==================================================");
-        log.info("Convert inflearn courses to lectures and save lectures");
-        log.info("==================================================");
-        List<Lecture> lectures = convertCourses(courses);
-        lectureService.saveOrUpdateLectures(SOURCE, lectures);
     }
 
-    private List<InflearnCategory> getCategories() {
+    private List<Category> getAndConvertCategories() {
 
-        Connection conn = Jsoup.connect(COURSE_URL);
+        List<Category> convertedMainCategories = new ArrayList<>();
 
-        List<InflearnCategory> categories = new ArrayList<>();
+        Document document;
 
         try {
-            Document document = conn.get();
-
-            Elements mainCategoryDivisions = document.select("nav > div.accordion");
-
-            for (Element mainCategoryDivision : mainCategoryDivisions) {
-
-                Element mainCategory = mainCategoryDivision.select("> div > p.accordion-header-text").first();
-
-                if (mainCategory == null) {
-                    continue;
-                }
-
-                Elements subCategories = mainCategoryDivision.select("> div.accordion-body > a.accordion-content");
-
-                for (Element subCategory : subCategories) {
-                    String mainCategoryName = mainCategory.text();
-                    String subCategoryName = subCategory.text();
-                    String url = subCategory.attr("abs:href");
-
-                    log.info("Main={}, Sub={}, URL={}", mainCategoryName, subCategoryName, url);
-                    categories.add(new InflearnCategory(mainCategoryName, subCategoryName, url));
-                }
-            }
-        } catch (IOException exception) {
-            log.error("Inflearn course categories document read failed", exception);
-            throw new RuntimeException(exception);
-        } catch (RuntimeException exception) {
-            log.error("Inflearn course categories document parsing failed", exception);
-            throw exception;
+            document = apiService.get(COURSE_URL);
+        } catch (Exception exception) {
+            log.error("Inflearn categories read failed.");
+            throw new IllegalStateException("Inflearn categories read failed.");
         }
 
-        return categories;
+        Elements mainCategoryDivisions = document.select("nav > div.accordion");
+
+        for (Element mainCategoryDivision : mainCategoryDivisions) {
+
+            Element mainCategory = mainCategoryDivision.select("> div > p.accordion-header-text").first();
+
+            if (mainCategory == null) {
+                continue;
+            }
+
+            String mainCategoryTitle = mainCategory.text().trim();
+
+            List<Category> convertedSubCategories = new ArrayList<>();
+
+            Elements subCategories = mainCategoryDivision.select("> div.accordion-body > a.accordion-content");
+
+            for (Element subCategory : subCategories) {
+                String subCategoryTitle = subCategory.text().trim();
+                String url = subCategory.attr("abs:href");
+
+                convertedSubCategories.add(new Category(
+                        null,
+                        subCategoryTitle,
+                        url,
+                        Collections.emptyList()));
+            }
+
+            if (convertedSubCategories.isEmpty()) {
+                continue;
+            }
+
+            convertedMainCategories.add(new Category(null,
+                    mainCategoryTitle,
+                    "",
+                    convertedSubCategories));
+        }
+
+        return convertedMainCategories;
+    }
+
+    private void validateCategories(List<Category> categories) {
+
+        Map<String, Boolean> categoryExistenceMap = Arrays.stream(InflearnCategoryMap.values())
+                .map(categoryMap -> categoryMap.getOriginalMainCategory() + "," + categoryMap.getOriginalSubCategory())
+                .collect(Collectors.toMap(key -> key, value -> false));
+
+        for (Category category : categories) {
+
+            for (Category subCategory : category.getSubCategories()) {
+
+                String key = category.getTitle() + "," + subCategory.getTitle();
+                Boolean exists = categoryExistenceMap.get(key);
+
+                if (exists == null) {
+                    log.error("Inflearn categories validation failed, not match category. Main Category: {}, Sub Category: {}", category.getTitle(), subCategory.getTitle());
+                    throw new IllegalStateException("Coloso categories validation failed, not match category. Main Category: " + category.getTitle() + " " + "Sub Category: " + subCategory.getTitle());
+                }
+
+                if (exists) {
+                    log.error("Inflearn categories validation failed, duplicated category. Main Category: {}, Sub Category: {}", category.getTitle(), subCategory.getTitle());
+                    throw new IllegalStateException("Coloso categories validation failed, duplicated category. Main Category: " + category.getTitle() + " " + "Sub Category: " + subCategory.getTitle());
+                } else {
+                    categoryExistenceMap.put(key, true);
+                }
+            }
+        }
     }
 
     private List<InflearnCourse> getCourses(List<InflearnCategory> categories) {
@@ -240,9 +284,9 @@ public class InflearnCrawler {
             String convertedOriginalMainCategory = originalMainCategory.split(",")[0].trim();
             String convertedOriginalSubCategory = originalSubCategory.split(",")[0].trim();
 
-            Optional<Category> convertedCategory = Arrays.stream(Category.values()).filter(category ->
-                            category.getOriginalMainCategory().equals(convertedOriginalMainCategory) &&
-                                    category.getOriginalSubCategory().equals(convertedOriginalSubCategory))
+            Optional<InflearnCategoryMap> convertedCategory = Arrays.stream(InflearnCategoryMap.values()).filter(inflearnCategoryMap ->
+                            inflearnCategoryMap.getOriginalMainCategory().equals(convertedOriginalMainCategory) &&
+                                    inflearnCategoryMap.getOriginalSubCategory().equals(convertedOriginalSubCategory))
                     .findFirst();
 
             if (convertedCategory.isEmpty()) {

@@ -87,14 +87,29 @@ public class ColosoCrawler {
                     continue;
                 }
 
-                convertedSubCategories.add(new Category(subCategory.getId(), subCategory.getTitle().trim(), Collections.emptyList()));
+                Long subCategoryId = subCategory.getId();
+                if (subCategoryId == null) {
+                    continue;
+                }
+
+                String url = UriComponentsBuilder.fromUriString(COURSES_URL)
+                        .buildAndExpand(subCategoryId.toString())
+                        .toUriString();
+
+                convertedSubCategories.add(new Category(subCategoryId,
+                        subCategory.getTitle().trim(),
+                        url,
+                        Collections.emptyList()));
             }
 
             if (convertedSubCategories.isEmpty()) {
                 continue;
             }
 
-            convertedMainCategories.add(new Category(mainCategory.getId(), mainCategory.getTitle().trim(), convertedSubCategories));
+            convertedMainCategories.add(new Category(mainCategory.getId(),
+                    mainCategory.getTitle().trim(),
+                    "",
+                    convertedSubCategories));
         }
 
         return convertedMainCategories;
@@ -155,11 +170,7 @@ public class ColosoCrawler {
 
         String mainCategoryTitle = category.getTitle();
         String subCategoryTitle = subCategory.getTitle();
-        Long subCategoryId = subCategory.getId();
-
-        String url = UriComponentsBuilder.fromUriString(COURSES_URL)
-                .buildAndExpand(subCategoryId.toString())
-                .toUriString();
+        String url = subCategory.getUrl();
 
         // 강의 목록 페이지
         Document document;
