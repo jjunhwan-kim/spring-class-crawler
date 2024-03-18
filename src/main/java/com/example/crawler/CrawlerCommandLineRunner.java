@@ -19,8 +19,8 @@ public class CrawlerCommandLineRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        inflearnCrawler.get();
         colosoCrawler.get();
         fastCampusCrawler.get();
-        inflearnCrawler.get();
     }
 }

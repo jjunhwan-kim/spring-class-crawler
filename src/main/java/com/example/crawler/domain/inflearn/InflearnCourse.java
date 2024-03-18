@@ -35,26 +35,4 @@ public class InflearnCourse {
 
     @JsonProperty("selling_price")
     private String sellingPrice;
-
-    private String courseUrl;
-
-    private String courseImageUrl;
-
-    public void updateUrl(String courseUrl, String courseImageUrl) {
-        this.courseUrl = courseUrl;
-        this.courseImageUrl = courseImageUrl;
-    }
-
-    @Override
-    public String toString() {
-        return id + "\t" +
-                title + "\t" +
-                instructor + "\t" +
-                sellingPrice + "\t" +
-                firstCategory + "\t" +
-                secondCategory + "\t" +
-                tag + "\t" +
-                courseUrl + "\t" +
-                courseImageUrl;
-    }
 }

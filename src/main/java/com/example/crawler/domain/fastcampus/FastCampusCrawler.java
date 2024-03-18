@@ -1,5 +1,7 @@
 package com.example.crawler.domain.fastcampus;
 
+import com.example.crawler.domain.AbstractCrawler;
+import com.example.crawler.domain.coloso.ColosoCategoryMap;
 import com.example.crawler.domain.common.ApiService;
 import com.example.crawler.domain.common.Category;
 import com.example.crawler.domain.common.Course;
@@ -14,22 +16,27 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class FastCampusCrawler {
+public class FastCampusCrawler extends AbstractCrawler {
 
-    private static final String SOURCE = "fastcampus";
+    private static final String SOURCE = "Fast Campus";
     private static final String BASE_URL = "https://fastcampus.co.kr/";
     private static final String CATEGORIES_URL = "https://fastcampus.co.kr/.api/www/categories/all";
     private static final String COURSES_URL = "https://fastcampus.co.kr/.api/www/categories/{subCategoryId}/page";
     private static final String COURSE_URL = "https://fastcampus.co.kr/.api/www/courses/{id}/products";
-    private static final String LINE_SEPARATOR_PATTERN = "\r\n|[\n\r\u2028\u2029\u0085]";
     private final ApiService apiService;
     private final LectureService lectureService;
+
+    @Override
+    protected String getSource() {
+        return SOURCE;
+    }
 
     public void get() {
 
@@ -40,7 +47,7 @@ public class FastCampusCrawler {
         FastCampusCategoriesResponse response = getCategories();
         List<Category> categories = convertCategories(response);
         printCategories(categories);
-        validateCategories(categories);
+        validateCategories(categories, FastCampusCategoryMap.values());
 
         log.info("==================================================");
         log.info("Get Fast Campus courses..");
@@ -112,34 +119,6 @@ public class FastCampusCrawler {
         return convertedMainCategories;
     }
 
-    private void validateCategories(List<Category> categories) {
-
-        Map<String, Boolean> categoryExistenceMap = Arrays.stream(FastCampusCategoryMap.values())
-                .map(categoryMap -> categoryMap.getOriginalMainCategory() + "," + categoryMap.getOriginalSubCategory())
-                .collect(Collectors.toMap(key -> key, value -> false));
-
-        for (Category category : categories) {
-
-            for (Category subCategory : category.getSubCategories()) {
-
-                String key = category.getTitle() + "," + subCategory.getTitle();
-                Boolean exists = categoryExistenceMap.get(key);
-
-                if (exists == null) {
-                    log.error("Fast Campus categories validation failed, not match category. Main Category: {}, Sub Category: {}", category.getTitle(), subCategory.getTitle());
-                    throw new IllegalStateException("Fast Campus categories validation failed, not match category. Main Category: " + category.getTitle() + " " + "Sub Category: " + subCategory.getTitle());
-                }
-
-                if (exists) {
-                    log.error("Fast Campus categories validation failed, duplicated category. Main Category: {}, Sub Category: {}", category.getTitle(), subCategory.getTitle());
-                    throw new IllegalStateException("Fast Campus categories validation failed, duplicated category. Main Category: " + category.getTitle() + " " + "Sub Category: " + subCategory.getTitle());
-                } else {
-                    categoryExistenceMap.put(key, true);
-                }
-            }
-        }
-    }
-
     public void getAndSaveCourses(List<Category> categories) {
 
         for (Category category : categories) {
@@ -152,7 +131,7 @@ public class FastCampusCrawler {
 
                 try {
                     List<Course> courses = getCourses(category, subCategory);
-                    List<Lecture> lectures = convertCourses(courses);
+                    List<Lecture> lectures = convertCourses(courses, FastCampusCategoryMap.values());
                     lectureService.saveOrUpdateLectures(SOURCE, lectures);
                 } catch (Exception exception) {
                     log.error("Main Category: {}, Sub Category: {} failed, {}", mainCategoryTitle, subCategoryTitle, exception.getMessage());
@@ -193,8 +172,11 @@ public class FastCampusCrawler {
             String description = course.getPublicDescription();
             String title = course.getPublicTitle();
             String keywords = String.join(",", course.getKeywords());
-            String courseUrl = (BASE_URL + "/" + slug);
-            String imageURl = course.getDesktopCardAsset();
+            String courseUrl = "";
+            if (StringUtils.hasText(slug)) {
+                courseUrl = (BASE_URL + "/" + slug);
+            }
+            String imageUrl = course.getDesktopCardAsset();
 
             url = UriComponentsBuilder.fromUriString(COURSE_URL)
                     .buildAndExpand(id.toString())
@@ -216,12 +198,12 @@ public class FastCampusCrawler {
 
             List<FastCampusCourseResponse.Data.Product> products = courseResponse.getData().getProducts();
 
-            Long price;
+            String price;
 
-            if (products.isEmpty()) {
-                price = 0L;
+            if (products.isEmpty() || products.get(0).getSalePrice() == null) {
+                price = "0";
             } else {
-                price = products.get(0).getSalePrice();
+                price = products.get(0).getSalePrice().toString();
             }
 
             String instructor = courseResponse.getData().getCourse().getInstructor();
@@ -236,7 +218,7 @@ public class FastCampusCrawler {
                     mainCategoryTitle,
                     subCategoryTitle,
                     courseUrl,
-                    imageURl);
+                    imageUrl);
 
             log.info("{}", fastCampusCourse);
 
@@ -244,98 +226,5 @@ public class FastCampusCrawler {
         }
 
         return fastCampusCourses;
-    }
-
-    public List<Lecture> convertCourses(List<Course> courses) {
-
-        List<Lecture> lectures = new ArrayList<>();
-
-        for (Course course : courses) {
-
-            Long id = course.getId();
-            String title = course.getTitle().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            Long price = course.getPrice();
-            if (price == null) {
-                price = 0L;
-            }
-
-            String description;
-            String keywords;
-            String instructor;
-            String mainCategory;
-            String subCategory;
-            String url;
-            String imageUrl;
-
-            if (StringUtils.hasText(course.getDescription())) {
-                description = course.getDescription().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                description = "";
-            }
-            if (StringUtils.hasText(course.getKeywords())) {
-                keywords = course.getKeywords().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                keywords = "";
-            }
-            if (StringUtils.hasText(course.getInstructor())) {
-                instructor = course.getInstructor().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                instructor = "";
-            }
-            mainCategory = course.getMainCategory();
-            subCategory = course.getSubCategory();
-
-            if (StringUtils.hasText(course.getCourseUrl())) {
-                url = course.getCourseUrl().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                url = "";
-            }
-            if (StringUtils.hasText(course.getImageUrl())) {
-                imageUrl = course.getImageUrl().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                imageUrl = "";
-            }
-
-            Optional<FastCampusCategoryMap> convertedCategory = Arrays.stream(FastCampusCategoryMap.values()).filter(fastCampusCategoryMap ->
-                            fastCampusCategoryMap.getOriginalMainCategory().equals(mainCategory) &&
-                                    fastCampusCategoryMap.getOriginalSubCategory().equals(subCategory))
-                    .findFirst();
-
-            if (convertedCategory.isEmpty()) {
-                log.error("Fast Campus category map conversion failed. Main Category: {}, Sub Category: {}", mainCategory, subCategory);
-                throw new IllegalStateException("Fast Campus category map conversion failed. Main Category: " + mainCategory + " " + "Sub Category: " + subCategory);
-            }
-
-            String convertedMainCategory = convertedCategory.get().getConvertedMainCategory();
-            String convertedSubCategory = convertedCategory.get().getConvertedSubCategory();
-
-            Lecture lecture = new Lecture(title,
-                    SOURCE,
-                    id.toString(),
-                    url,
-                    price.toString(),
-                    instructor,
-                    imageUrl,
-                    mainCategory,
-                    subCategory,
-                    convertedMainCategory,
-                    convertedSubCategory,
-                    keywords,
-                    description);
-
-            lectures.add(lecture);
-        }
-
-        return lectures;
-    }
-
-    private void printCategories(List<Category> categories) {
-        for (Category category : categories) {
-            List<Category> subCategories = category.getSubCategories();
-
-            for (Category subCategory : subCategories) {
-                log.info("{}\t{}\t{}", category.getTitle(), subCategory.getTitle(), subCategory.getUrl());
-            }
-        }
     }
 }

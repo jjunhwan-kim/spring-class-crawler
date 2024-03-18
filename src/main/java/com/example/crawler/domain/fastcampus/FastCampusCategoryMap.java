@@ -1,11 +1,12 @@
 package com.example.crawler.domain.fastcampus;
 
+import com.example.crawler.domain.CategoryMap;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum FastCampusCategoryMap {
+public enum FastCampusCategoryMap implements CategoryMap {
     CATEGORY001("프로그래밍", "프론트엔드 개발", "프로그래밍", "웹"),
     CATEGORY002("프로그래밍", "백엔드 개발", "프로그래밍", "웹"),
     CATEGORY003("프로그래밍", "모바일 앱 개발", "프로그래밍", "모바일"),

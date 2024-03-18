@@ -1,11 +1,12 @@
 package com.example.crawler.domain.inflearn;
 
+import com.example.crawler.domain.CategoryMap;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum InflearnCategoryMap {
+public enum InflearnCategoryMap implements CategoryMap {
     CATEGORY001("개발 · 프로그래밍", "웹 개발", "프로그래밍", "웹"),
     CATEGORY002("개발 · 프로그래밍", "프론트엔드", "프로그래밍", "웹"),
     CATEGORY003("개발 · 프로그래밍", "백엔드", "프로그래밍", "웹"),

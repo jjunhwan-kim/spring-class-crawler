@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 public class Course {
     private final Long id;
     private final String title;
-    private final Long price;
+    private final String price;
     private final String description;
     private final String keywords;
     private final String instructor;

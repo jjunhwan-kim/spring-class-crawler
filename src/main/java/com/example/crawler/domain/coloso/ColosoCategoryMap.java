@@ -1,11 +1,12 @@
 package com.example.crawler.domain.coloso;
 
+import com.example.crawler.domain.CategoryMap;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum ColosoCategoryMap {
+public enum ColosoCategoryMap implements CategoryMap {
     CATEGORY001("드로잉", "인체드로잉", "드로잉", "취미드로잉"),
     CATEGORY002("드로잉", "캐릭터", "드로잉", "캐릭터일러스트"),
     CATEGORY003("드로잉", "디자인/컨셉아트", "드로잉", "컨셉 아트"),

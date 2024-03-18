@@ -1,5 +1,6 @@
 package com.example.crawler.domain.coloso;
 
+import com.example.crawler.domain.AbstractCrawler;
 import com.example.crawler.domain.coloso.response.ColosoCategoriesResponse;
 import com.example.crawler.domain.coloso.response.ColosoCoursesResponse;
 import com.example.crawler.domain.common.ApiService;
@@ -17,24 +18,29 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class ColosoCrawler {
+public class ColosoCrawler extends AbstractCrawler {
 
-    private static final String SOURCE = "coloso";
+    private static final String SOURCE = "Coloso";
     private static final String CATEGORIES_URL = "https://coloso.co.kr/api/displays";
     private static final String COURSES_URL = "https://coloso.co.kr/category/{subCategoryId}";
     private static final String COURSE_URL = "https://coloso.co.kr/api/catalogs/courses";
-    private static final String LINE_SEPARATOR_PATTERN = "\r\n|[\n\r\u2028\u2029\u0085]";
 
     private final ObjectMapper objectMapper;
     private final ApiService apiService;
     private final LectureService lectureService;
+
+    @Override
+    protected String getSource() {
+        return SOURCE;
+    }
 
     public void get() {
         log.info("==================================================");
@@ -44,7 +50,7 @@ public class ColosoCrawler {
         ColosoCategoriesResponse response = getCategories();
         List<Category> categories = convertCategories(response);
         printCategories(categories);
-        validateCategories(categories);
+        validateCategories(categories, ColosoCategoryMap.values());
 
         log.info("==================================================");
         log.info("Get Coloso courses..");
@@ -116,34 +122,6 @@ public class ColosoCrawler {
         return convertedMainCategories;
     }
 
-    private void validateCategories(List<Category> categories) {
-
-        Map<String, Boolean> categoryExistenceMap = Arrays.stream(ColosoCategoryMap.values())
-                .map(categoryMap -> categoryMap.getOriginalMainCategory() + "," + categoryMap.getOriginalSubCategory())
-                .collect(Collectors.toMap(key -> key, value -> false));
-
-        for (Category category : categories) {
-
-            for (Category subCategory : category.getSubCategories()) {
-
-                String key = category.getTitle() + "," + subCategory.getTitle();
-                Boolean exists = categoryExistenceMap.get(key);
-
-                if (exists == null) {
-                    log.error("Coloso categories validation failed, not match category. Main Category: {}, Sub Category: {}", category.getTitle(), subCategory.getTitle());
-                    throw new IllegalStateException("Coloso categories validation failed, not match category. Main Category: " + category.getTitle() + " " + "Sub Category: " + subCategory.getTitle());
-                }
-
-                if (exists) {
-                    log.error("Coloso categories validation failed, duplicated category. Main Category: {}, Sub Category: {}", category.getTitle(), subCategory.getTitle());
-                    throw new IllegalStateException("Coloso categories validation failed, duplicated category. Main Category: " + category.getTitle() + " " + "Sub Category: " + subCategory.getTitle());
-                } else {
-                    categoryExistenceMap.put(key, true);
-                }
-            }
-        }
-    }
-
     public void getAndSaveCourses(List<Category> categories) {
 
         for (Category category : categories) {
@@ -156,7 +134,7 @@ public class ColosoCrawler {
 
                 try {
                     List<Course> courses = getCourses(category, subCategory);
-                    List<Lecture> lectures = convertCourses(courses);
+                    List<Lecture> lectures = convertCourses(courses, ColosoCategoryMap.values());
                     lectureService.saveOrUpdateLectures(SOURCE, lectures);
                 } catch (Exception exception) {
                     log.error("Main Category: {}, Sub Category: {} failed, {}", mainCategoryTitle, subCategoryTitle, exception.getMessage());
@@ -221,22 +199,27 @@ public class ColosoCrawler {
 
             Long id = product.getProductId();
 
+            String price;
             List<Product.Offer> offers = product.getOffers();
             if (offers.isEmpty()) {
                 log.error("Product offer is empty.");
-                continue;
+                price = "0";
+            } else {
+                Product.Offer offer = offers.get(0);
+                List<Product.Offer.PriceSpecification> priceSpecifications = offer.getPriceSpecifications();
+                if (priceSpecifications.isEmpty()) {
+                    log.error("Price specification is empty.");
+                    price = "0";
+                } else {
+                    Product.Offer.PriceSpecification priceSpecification = priceSpecifications.get(0);
+                    if (priceSpecification.getPrice() == null) {
+                        log.error("Price is null.");
+                        price = "0";
+                    } else {
+                        price = priceSpecification.getPrice().toString();
+                    }
+                }
             }
-
-            Product.Offer offer = offers.get(0);
-            List<Product.Offer.PriceSpecification> priceSpecifications = offer.getPriceSpecifications();
-            if (priceSpecifications.isEmpty()) {
-                log.error("Price specification is empty.");
-                continue;
-            }
-
-            Product.Offer.PriceSpecification priceSpecification = priceSpecifications.get(0);
-            Long price = priceSpecification.getPrice();
-
 
             url = UriComponentsBuilder.fromUriString(COURSE_URL)
                     .queryParam("id", id.toString())
@@ -304,6 +287,7 @@ public class ColosoCrawler {
                     courseUrl,
                     imageUrl
             );
+
             log.info("{}", colosoCourse);
 
             colosoCourses.add(colosoCourse);
@@ -312,88 +296,6 @@ public class ColosoCrawler {
         return colosoCourses;
     }
 
-    public List<Lecture> convertCourses(List<Course> courses) {
-
-        List<Lecture> lectures = new ArrayList<>();
-
-        for (Course course : courses) {
-
-            Long id = course.getId();
-            String title = course.getTitle().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            Long price = course.getPrice();
-            if (price == null) {
-                price = 0L;
-            }
-
-            String description;
-            String keywords;
-            String instructor;
-            String mainCategory;
-            String subCategory;
-            String url;
-            String imageUrl;
-
-            if (StringUtils.hasText(course.getDescription())) {
-                description = course.getDescription().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                description = "";
-            }
-            if (StringUtils.hasText(course.getKeywords())) {
-                keywords = course.getKeywords().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                keywords = "";
-            }
-            if (StringUtils.hasText(course.getInstructor())) {
-                instructor = course.getInstructor().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                instructor = "";
-            }
-            mainCategory = course.getMainCategory();
-            subCategory = course.getSubCategory();
-
-            if (StringUtils.hasText(course.getCourseUrl())) {
-                url = course.getCourseUrl().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                url = "";
-            }
-            if (StringUtils.hasText(course.getImageUrl())) {
-                imageUrl = course.getImageUrl().replaceAll(LINE_SEPARATOR_PATTERN, " ").replaceAll("\\s", " ").replaceAll(" {2,}", " ").trim();
-            } else {
-                imageUrl = "";
-            }
-
-            Optional<ColosoCategoryMap> convertedCategory = Arrays.stream(ColosoCategoryMap.values()).filter(colosoCategoryMap ->
-                            colosoCategoryMap.getOriginalMainCategory().equals(mainCategory) &&
-                                    colosoCategoryMap.getOriginalSubCategory().equals(subCategory))
-                    .findFirst();
-
-            if (convertedCategory.isEmpty()) {
-                log.error("Coloso category map conversion failed. Main Category: {}, Sub Category: {}", mainCategory, subCategory);
-                throw new IllegalStateException("Coloso category map conversion failed. Main Category: " + mainCategory + " " + "Sub Category: " + subCategory);
-            }
-
-            String convertedMainCategory = convertedCategory.get().getConvertedMainCategory();
-            String convertedSubCategory = convertedCategory.get().getConvertedSubCategory();
-
-            Lecture lecture = new Lecture(title,
-                    SOURCE,
-                    id.toString(),
-                    url,
-                    price.toString(),
-                    instructor,
-                    imageUrl,
-                    mainCategory,
-                    subCategory,
-                    convertedMainCategory,
-                    convertedSubCategory,
-                    keywords,
-                    description);
-
-            lectures.add(lecture);
-        }
-
-        return lectures;
-    }
 
     private boolean isHideMenu(ColosoCategoriesResponse.Category category) {
 
@@ -402,15 +304,5 @@ public class ColosoCrawler {
         Boolean hideMenu = extras.getHideMenu();
 
         return hideMenu != null && hideMenu;
-    }
-
-    private void printCategories(List<Category> categories) {
-        for (Category category : categories) {
-            List<Category> subCategories = category.getSubCategories();
-
-            for (Category subCategory : subCategories) {
-                log.info("{}\t{}\t{}", category.getTitle(), subCategory.getTitle(), subCategory.getUrl());
-            }
-        }
     }
 }

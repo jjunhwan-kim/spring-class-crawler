@@ -5,6 +5,7 @@ spring:
 logging:
   file:
     name: log.log
+    max-size: 100MB
 
 ---
 spring:

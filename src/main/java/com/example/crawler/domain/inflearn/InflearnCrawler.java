@@ -1,14 +1,14 @@
 package com.example.crawler.domain.inflearn;
 
+import com.example.crawler.domain.AbstractCrawler;
 import com.example.crawler.domain.common.ApiService;
 import com.example.crawler.domain.common.Category;
+import com.example.crawler.domain.common.Course;
 import com.example.crawler.domain.lecture.Lecture;
 import com.example.crawler.domain.lecture.LectureService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Connection;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -16,19 +16,25 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class InflearnCrawler {
+public class InflearnCrawler extends AbstractCrawler {
 
-    private static final String SOURCE = "inflearn";
+    private static final String SOURCE = "Inflearn";
     private static final String COURSE_URL = "https://www.inflearn.com/courses";
     private final ObjectMapper objectMapper;
     private final ApiService apiService;
     private final LectureService lectureService;
+
+    @Override
+    protected String getSource() {
+        return SOURCE;
+    }
 
     public void get() {
 
@@ -38,11 +44,11 @@ public class InflearnCrawler {
         log.info("Get Inflearn categories..");
         List<Category> categories = getAndConvertCategories();
         printCategories(categories);
-        validateCategories(categories);
+        validateCategories(categories, InflearnCategoryMap.values());
 
         log.info("==================================================");
         log.info("Get Inflearn courses..");
-        //getAndSaveCourses(categories);
+        getAndSaveCourses(categories);
 
         log.info("==================================================");
         log.info("Inflearn Crawler End");
@@ -105,227 +111,183 @@ public class InflearnCrawler {
         return convertedMainCategories;
     }
 
-    private void validateCategories(List<Category> categories) {
-
-        Map<String, Boolean> categoryExistenceMap = Arrays.stream(InflearnCategoryMap.values())
-                .map(categoryMap -> categoryMap.getOriginalMainCategory() + "," + categoryMap.getOriginalSubCategory())
-                .collect(Collectors.toMap(key -> key, value -> false));
+    public void getAndSaveCourses(List<Category> categories) {
 
         for (Category category : categories) {
 
             for (Category subCategory : category.getSubCategories()) {
+                String mainCategoryTitle = category.getTitle();
+                String subCategoryTitle = subCategory.getTitle();
 
-                String key = category.getTitle() + "," + subCategory.getTitle();
-                Boolean exists = categoryExistenceMap.get(key);
+                log.info("Main Category: {}, Sub Category: {}", mainCategoryTitle, subCategoryTitle);
 
-                if (exists == null) {
-                    log.error("Inflearn categories validation failed, not match category. Main Category: {}, Sub Category: {}", category.getTitle(), subCategory.getTitle());
-                    throw new IllegalStateException("Coloso categories validation failed, not match category. Main Category: " + category.getTitle() + " " + "Sub Category: " + subCategory.getTitle());
-                }
-
-                if (exists) {
-                    log.error("Inflearn categories validation failed, duplicated category. Main Category: {}, Sub Category: {}", category.getTitle(), subCategory.getTitle());
-                    throw new IllegalStateException("Coloso categories validation failed, duplicated category. Main Category: " + category.getTitle() + " " + "Sub Category: " + subCategory.getTitle());
-                } else {
-                    categoryExistenceMap.put(key, true);
+                try {
+                    List<Course> courses = getCourses(category, subCategory);
+                    List<Lecture> lectures = convertCourses(courses, InflearnCategoryMap.values());
+                    lectureService.saveOrUpdateLectures(SOURCE, lectures);
+                } catch (Exception exception) {
+                    log.error("Main Category: {}, Sub Category: {} failed, {}", mainCategoryTitle, subCategoryTitle, exception.getMessage());
                 }
             }
         }
     }
 
-    private List<InflearnCourse> getCourses(List<InflearnCategory> categories) {
+    private List<Course> getCourses(Category category, Category subCategory) {
 
-        List<InflearnCourse> courses = new ArrayList<>();
+        List<Course> inflearnCourses = new ArrayList<>();
 
-        for (InflearnCategory category : categories) {
+        String url = subCategory.getUrl();
 
-            log.info("==================================================");
-            log.info("Get inflearn courses from {}", category);
-            log.info("==================================================");
-
-            String categoryUrl = category.getUrl();
-            Connection connection = Jsoup.connect(categoryUrl);
-
-            long lastPageNumber;
-
-            try {
-                Document document = connection.get();
-
-                Element lastPageListElement = document.select("ul.pagination-list > li:last-of-type").first();
-                if (lastPageListElement == null) {
-                    log.error("Inflearn course document pagination list parsing failed, {}", category);
-                    continue;
-                }
-
-                Element lastPageAnchor = lastPageListElement.select("a").first();
-                if (lastPageAnchor == null) {
-                    log.error("Inflearn course document pagination list parsing failed, {}", category);
-                    continue;
-                }
-                String lastPage = lastPageAnchor.text();
-                log.info("ColosoCategoryMap last page is {}", lastPage);
-
-                lastPageNumber = Long.parseLong(lastPage);
-
-            } catch (IOException exception) {
-                log.error("Inflearn course document read failed", exception);
-                continue;
-            } catch (Exception exception) {
-                log.error("Inflearn course document parsing failed", exception);
-                continue;
-            }
-
-            for (int i = 1; i <= lastPageNumber; i++) {
-                String courseListPageUrl = categoryUrl + "?page=" + i;
-                courses.addAll(getCourses(courseListPageUrl));
-            }
-
-            log.info("==================================================");
+        // 강의 목록 페이지
+        Document document;
+        try {
+            document = apiService.get(url);
+        } catch (Exception exception) {
+            log.error("Courses fetch failed. {}", url);
+            return Collections.emptyList();
         }
 
-        return courses;
-    }
+        long lastPageNumber;
 
-    private List<InflearnCourse> getCourses(String url) {
+        Element lastPageListElement = document.select("ul.pagination-list > li:last-of-type").first();
+        if (lastPageListElement == null) {
+            log.error("Courses pagination list parsing failed. \"ul.pagination-list > li\" not found. {}", url);
+            return Collections.emptyList();
+        }
 
-        List<InflearnCourse> courses = new ArrayList<>();
-
-        Connection connection = Jsoup.connect(url);
+        Element lastPageAnchor = lastPageListElement.select("a").first();
+        if (lastPageAnchor == null) {
+            log.error("Courses pagination list parsing failed. anchor tag does not exists. {}", url);
+            return Collections.emptyList();
+        }
 
         try {
-            Document document = connection.get();
-
-            log.info("==================================================");
-            log.info("Get inflearn courses from {}", url);
-            log.info("==================================================");
-
-            Elements courseDivisions = document.select("div.card.course.course_card_item");
-
-            for (Element courseDivision : courseDivisions) {
-
-                Element courseAnchor = courseDivision.select("> a").first();
-
-                if (courseAnchor == null) {
-                    log.error("Inflearn course document course anchor tag parsing failed");
-                    continue;
-                }
-
-                String courseUrl = courseAnchor.attr("abs:href");
-                Element courseImage = courseAnchor.select("div.card-image > figure > img").first();
-
-                if (courseImage == null) {
-                    courseImage = courseAnchor.select("div.card-image > section > video > source").first();
-                    if (courseImage == null) {
-                        log.error("Inflearn course document course image tag parsing failed");
-                        continue;
-                    }
-                }
-
-                String courseImageUrl = courseImage.attr("abs:src");
-                courseImageUrl = courseImageUrl.replace(".mp4", "");
-
-                if (!StringUtils.hasText(courseImageUrl)) {
-                    log.error("Inflearn course document course image tag parsing failed");
-                    continue;
-                }
-
-                Element courseDataDivision = courseAnchor.select("div.course-data").first();
-
-                if (courseDataDivision == null) {
-                    log.error("Inflearn course document course data division tag parsing failed");
-                    continue;
-                }
-
-                String courseDataJsonString = courseDataDivision.attr("fxd-data");
-                InflearnCourse course = null;
-                try {
-                    course = objectMapper.readValue(courseDataJsonString, InflearnCourse.class);
-                } catch (IOException exception) {
-                    log.error("Inflearn course document course data json string parsing failed");
-                }
-
-                if (course == null) {
-                    continue;
-                }
-
-                course.updateUrl(courseUrl, courseImageUrl);
-
-                log.info("Course, {}", course);
-                courses.add(course);
-            }
-        } catch (IOException exception) {
-            log.error("Inflearn course document read failed", exception);
+            String lastPage = lastPageAnchor.text();
+            lastPageNumber = Long.parseLong(lastPage);
         } catch (Exception exception) {
-            log.error("Inflearn course document parsing failed", exception);
+            log.error("Courses pagination list parsing failed. last page number parsing failed. {}", url);
+            return Collections.emptyList();
         }
 
-        return courses;
+        for (int i = 1; i <= lastPageNumber; i++) {
+            String coursesUrl = url + "?page=" + i;
+
+            inflearnCourses.addAll(getCourses(coursesUrl));
+        }
+
+        return inflearnCourses;
     }
 
-    public List<Lecture> convertCourses(List<InflearnCourse> courses) {
+    private List<Course> getCourses(String url) {
 
-        List<Lecture> lectures = new ArrayList<>();
-        // 중복 제거
-        Set<Long> sourceIds = new HashSet<>();
+        List<Course> inflearnCourses = new ArrayList<>();
 
-        for (InflearnCourse course : courses) {
+        // 강의 목록 페이지
+        Document document;
+        try {
+            document = apiService.get(url);
+        } catch (Exception exception) {
+            log.error("Courses fetch failed. {}", url);
+            return Collections.emptyList();
+        }
+
+        Elements courseDivisions = document.select("div.card.course.course_card_item");
+
+        for (Element courseDivision : courseDivisions) {
+
+            Element courseAnchor = courseDivision.select("> a").first();
+
+            String courseUrl;
+            if (courseAnchor == null) {
+                log.error("Course anchor tag does not exist.");
+                continue;
+            }
+
+            courseUrl = courseAnchor.attr("abs:href");
+
+            String imageUrl = "";
+            Element image = courseAnchor.select("div.card-image > figure > img").first();
+
+            if (image == null) {
+                image = courseAnchor.select("div.card-image > section > video > source").first();
+                if (image == null) {
+                    log.error("Course image tag does not exist.");
+                } else {
+                    imageUrl = image.attr("abs:src");
+                }
+            } else {
+                imageUrl = image.attr("abs:src");
+            }
+
+            imageUrl = imageUrl.replace(".mp4", "");
+
+            Element courseTitleDivision = courseAnchor.select("div.course_title").first();
+
+            if (courseTitleDivision == null) {
+                log.error("Course title division tag does not exist.");
+                continue;
+            }
+
+            String courseTitle = courseTitleDivision.text();
+
+            if (!StringUtils.hasText(courseTitle)) {
+                log.error("Course title does not exist.");
+                continue;
+            }
+
+            Element courseDataDivision = courseAnchor.select("div.course-data").first();
+
+            if (courseDataDivision == null) {
+                log.error("Course data division tag does not exist.");
+                continue;
+            }
+
+            String courseDataJsonString = courseDataDivision.attr("fxd-data");
+
+            // 강의 제목에 따옴표가 있는 경우 이스케이프 처리
+            if (courseTitle.contains("\"")) {
+                String escapedCourseTitle = courseTitle.replaceAll("\"", "\\\\\"");
+                courseDataJsonString = courseDataJsonString.replace(courseTitle, escapedCourseTitle);
+            }
+
+            InflearnCourse course;
+            try {
+                course = objectMapper.readValue(courseDataJsonString, InflearnCourse.class);
+            } catch (IOException exception) {
+                log.error("Course data json string parsing failed.");
+                continue;
+            }
+
+            if (course == null) {
+                log.error("Course data json string parsing failed.");
+                continue;
+            }
 
             Long id = course.getId();
-            if (sourceIds.contains(id)) {
-                continue;
-            } else {
-                sourceIds.add(id);
-            }
+            String title = course.getTitle();
+            String instructor = course.getInstructor();
+            String price = course.getSellingPrice();
+            String mainCategoryTitle = course.getFirstCategory().split(",")[0];
+            String subCategoryTitle = course.getSecondCategory().split(",")[0];
+            String tag = course.getTag();
 
-            String title = course.getTitle().replaceAll(" {2,}", " ").trim();
-            String instructor = course.getInstructor().replaceAll(" {2,}", " ").trim();
-            String price = course.getSellingPrice().replaceAll(" {2,}", " ").trim();
-            String originalMainCategory = course.getFirstCategory().replaceAll(" {2,}", " ").trim();
-            String originalSubCategory = course.getSecondCategory().replaceAll(" {2,}", " ").trim();
-            String tag = course.getTag().replaceAll(" {2,}", " ").trim();
-            String courseUrl = course.getCourseUrl().replaceAll(" {2,}", " ").trim();
-            String courseImageUrl = course.getCourseImageUrl().replaceAll(" {2,}", " ").trim();
-            String convertedOriginalMainCategory = originalMainCategory.split(",")[0].trim();
-            String convertedOriginalSubCategory = originalSubCategory.split(",")[0].trim();
-
-            Optional<InflearnCategoryMap> convertedCategory = Arrays.stream(InflearnCategoryMap.values()).filter(inflearnCategoryMap ->
-                            inflearnCategoryMap.getOriginalMainCategory().equals(convertedOriginalMainCategory) &&
-                                    inflearnCategoryMap.getOriginalSubCategory().equals(convertedOriginalSubCategory))
-                    .findFirst();
-
-            if (convertedCategory.isEmpty()) {
-                log.error("ColosoCategoryMap conversion failed! Main ColosoCategoryMap: {}, Sub ColosoCategoryMap: {}", originalMainCategory, originalSubCategory);
-                continue;
-            }
-
-            Lecture lecture = new Lecture(
+            Course inflearnCourse = new Course(
+                    id,
                     title,
-                    SOURCE,
-                    id.toString(),
-                    courseUrl,
                     price,
-                    instructor,
-                    courseImageUrl,
-                    originalMainCategory,
-                    originalSubCategory,
-                    convertedCategory.get().getConvertedMainCategory(),
-                    convertedCategory.get().getConvertedSubCategory(),
+                    "",
                     tag,
-                    "");
+                    instructor,
+                    mainCategoryTitle,
+                    subCategoryTitle,
+                    courseUrl,
+                    imageUrl);
 
-            lectures.add(lecture);
+            log.info("{}", inflearnCourse);
+
+            inflearnCourses.add(inflearnCourse);
         }
 
-        return lectures;
-    }
-
-    private void printCategories(List<Category> categories) {
-        for (Category category : categories) {
-            List<Category> subCategories = category.getSubCategories();
-
-            for (Category subCategory : subCategories) {
-                log.info("{}\t{}\t{}", category.getTitle(), subCategory.getTitle(), subCategory.getUrl());
-            }
-        }
+        return inflearnCourses;
     }
 }
