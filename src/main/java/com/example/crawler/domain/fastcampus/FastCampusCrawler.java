@@ -1,7 +1,6 @@
 package com.example.crawler.domain.fastcampus;
 
 import com.example.crawler.domain.AbstractCrawler;
-import com.example.crawler.domain.coloso.ColosoCategoryMap;
 import com.example.crawler.domain.common.ApiService;
 import com.example.crawler.domain.common.Category;
 import com.example.crawler.domain.common.Course;
